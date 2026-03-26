@@ -34,22 +34,14 @@ function TeamLogo({ code, size = 28 }: { code: string; size?: number }) {
   const team = IPL_TEAMS[code]
   if (!team) return <span style={{ fontSize: size * 0.45, fontWeight: 800, color: 'var(--text-3)' }}>{code}</span>
   return (
-    <img
-      src={team.logo}
-      alt={team.short}
-      width={size}
-      height={size}
-      style={{ borderRadius: '50%', objectFit: 'contain', background: team.bg }}
-      onError={(e) => {
-        // Fallback to text if image fails
-        const el = e.currentTarget
-        el.style.display = 'none'
-        const span = document.createElement('span')
-        span.textContent = team.short
-        span.style.cssText = `font-size:${size * 0.35}px;font-weight:800;color:${team.color};`
-        el.parentElement?.appendChild(span)
-      }}
-    />
+    <div style={{
+      width: size, height: size,
+      borderRadius: '50%', background: team.bg, color: team.color,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: size * 0.35, fontWeight: 800
+    }}>
+      {team.short}
+    </div>
   )
 }
 

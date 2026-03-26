@@ -88,11 +88,19 @@ export default async function CompletedMatchesPage() {
                     <div>
                       <div className="badge badge-muted" style={{ marginBottom: 8 }}>Match {matchNumber}</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                        {team1 && <img src={team1.logo} alt={t1} width={28} height={28} style={{ borderRadius: '50%', objectFit: 'contain', background: team1.bg }} />}
+                        {team1 && (
+                          <div style={{ width: 28, height: 28, borderRadius: '50%', background: team1.bg, color: team1.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800 }}>
+                            {t1}
+                          </div>
+                        )}
                         <span style={{ fontWeight: 700, fontSize: '1rem' }}>{t1}</span>
                         <span style={{ color: 'var(--text-3)', fontSize: '0.78rem' }}>vs</span>
                         <span style={{ fontWeight: 700, fontSize: '1rem' }}>{t2}</span>
-                        {team2 && <img src={team2.logo} alt={t2} width={28} height={28} style={{ borderRadius: '50%', objectFit: 'contain', background: team2.bg }} />}
+                        {team2 && (
+                          <div style={{ width: 28, height: 28, borderRadius: '50%', background: team2.bg, color: team2.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800 }}>
+                            {t2}
+                          </div>
+                        )}
                       </div>
                       <div style={{ color: 'var(--text-3)', fontSize: '0.78rem' }}>
                         {match.venue} · {new Date(match.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' })} · {match.time}
