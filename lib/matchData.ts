@@ -37,7 +37,7 @@ export function parseTeams(teamsStr: string): [string, string] {
 export const PLAYERS = [
   "Nachiketh",
   "Avaneesha",
-  "Sharanbassapa",
+  "Sgmrvk18",
   "Shreeram",
   "Lohith",
   "Ahad",
@@ -53,7 +53,7 @@ export const RANK_POINTS = [10, 8, 6, 5, 4, 3, 2] as const;
 export const PLAYER_COLUMNS: Record<PlayerName, string> = {
   Nachiketh: "nachiketh_points",
   Avaneesha: "avaneesha_points",
-  Sharanbassapa: "sharanbassapa_points",
+  Sgmrvk18: "sharanbassapa_points",
   Shreeram: "shreeram_points",
   Lohith: "lohith_points",
   Ahad: "ahad_points",
@@ -63,7 +63,7 @@ export const PLAYER_COLUMNS: Record<PlayerName, string> = {
 export const PLAYER_RANK_COLUMNS: Record<PlayerName, string> = {
   Nachiketh: "nachiketh_rank",
   Avaneesha: "avaneesha_rank",
-  Sharanbassapa: "sharanbassapa_rank",
+  Sgmrvk18: "sharanbassapa_rank",
   Shreeram: "shreeram_rank",
   Lohith: "lohith_rank",
   Ahad: "ahad_rank",
