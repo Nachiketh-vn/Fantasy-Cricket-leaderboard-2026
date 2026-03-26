@@ -334,7 +334,6 @@ function ChatPanel({ onClose, lbContext, matchContext, username, upcomingContext
             <Send size={15} />
           </button>
         </div>
-        <p style={{ fontSize: '0.7rem', color: 'var(--text-3)', marginTop: 8, textAlign: 'center' }}>Powered by OpenRouter</p>
       </div>
     </div>
   )
