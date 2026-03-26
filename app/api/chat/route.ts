@@ -122,8 +122,6 @@ When asked about climbing the leaderboard:
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://dream11-tracker.vercel.app',
-        'X-Title': 'Dream11 IPL 2026 Tracker',
       },
       body: JSON.stringify({
         model: 'nvidia/nemotron-3-super-120b-a12b:free',
