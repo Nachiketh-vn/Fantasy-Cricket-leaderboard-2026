@@ -70,13 +70,38 @@ function computeLeaderboard(results: ResultsMap): LBEntry[] {
   for (const p of PLAYERS) stats[p] = { lp: 0, tf: 0, mp: 0 }
 
   for (const m of Object.values(results)) {
-    for (const p of PLAYERS) {
-      const rank = Number(m[p + '_rank'] ?? 0)
-      const pts = Number(m[p + '_points'] ?? 0)
-      if (rank >= 1 && rank <= 7) {
-        stats[p].lp += RANK_POINTS[rank - 1]
-        stats[p].tf += pts
-        stats[p].mp++
+    // Collect all players' rank and points for this match
+    const matchEntries = PLAYERS.map(p => ({
+      player: p,
+      rank: Number(m[p + '_rank'] ?? 0),
+      pts: Number(m[p + '_points'] ?? 0),
+    })).filter(e => e.rank >= 1 && e.rank <= 7)
+
+    // Group by rank to handle ties
+    const rankGroups: Record<number, typeof matchEntries> = {}
+    for (const e of matchEntries) {
+      if (!rankGroups[e.rank]) rankGroups[e.rank] = []
+      rankGroups[e.rank].push(e)
+    }
+
+    for (const [rankStr, group] of Object.entries(rankGroups)) {
+      const rank = Number(rankStr)
+      const count = group.length
+
+      // Calculate averaged league points for this tied rank group
+      // Tied at rank R means they occupy positions R, R+1, ..., R+count-1
+      let totalLP = 0
+      for (let k = 0; k < count; k++) {
+        totalLP += RANK_POINTS[rank - 1 + k] ?? 0
+      }
+      const avgLP = totalLP / count
+
+      for (const e of group) {
+        // 0 fantasy points = 0 league points
+        const earnedLP = e.pts === 0 ? 0 : avgLP
+        stats[e.player].lp += earnedLP
+        stats[e.player].tf += e.pts
+        stats[e.player].mp++
       }
     }
   }
@@ -123,12 +148,50 @@ const RANK_COLORS = ['#f0b429', '#c0c8d8', '#cd7f32', '#9ba3b2', '#9ba3b2', '#f9
 function rankColor(rank: number) { return RANK_COLORS[rank - 1] ?? '#9ba3b2' }
 
 /* ── Add Result Modal ───────────────────────────────────── */
+function computeRanksAndPoints(filled: { player: string; pts: string }[]) {
+  // Sort descending by fantasy points
+  const sorted = [...filled].sort((a, b) => Number(b.pts) - Number(a.pts))
+
+  // Assign ranks with tie handling
+  const result: { player: string; fantasyPts: number; rank: number; leaguePts: number }[] = []
+  let i = 0
+  while (i < sorted.length) {
+    const pts = Number(sorted[i].pts)
+
+    // 0 fantasy points = 0 league points
+    if (pts === 0) {
+      result.push({ player: sorted[i].player, fantasyPts: 0, rank: i + 1, leaguePts: 0 })
+      i++
+      continue
+    }
+
+    // Find all players tied at this point value
+    let j = i
+    while (j < sorted.length && Number(sorted[j].pts) === pts) j++
+    const tiedCount = j - i
+
+    // Average the league points across tied ranks
+    let totalLP = 0
+    for (let k = i; k < j; k++) {
+      totalLP += RANK_POINTS[k] ?? 0
+    }
+    const avgLP = Math.round((totalLP / tiedCount) * 10) / 10 // round to 1 decimal
+
+    for (let k = i; k < j; k++) {
+      result.push({ player: sorted[k].player, fantasyPts: pts, rank: i + 1, leaguePts: avgLP })
+    }
+    i = j
+  }
+  return result
+}
+
 function AddResultModal({ match, onClose, onSaved, userId }: {
   match: Match; onClose: () => void; onSaved: (r: ResultsMap) => void; userId: string
 }) {
   const [rows, setRows] = useState(Array(7).fill(null).map(() => ({ player: '' as PlayerName | '', pts: '' })))
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
+  const [preview, setPreview] = useState<{ player: string; fantasyPts: number; rank: number; leaguePts: number }[] | null>(null)
 
   const selected = rows.map(r => r.player).filter(Boolean)
   const available = (i: number) => PLAYERS.filter(p => p === rows[i].player || !selected.includes(p))
@@ -137,23 +200,31 @@ function AddResultModal({ match, onClose, onSaved, userId }: {
     setRows(prev => { const n = [...prev]; n[i] = { ...n[i], [field]: v }; return n })
   }
 
-  async function save() {
+  function handlePreview() {
     const filled = rows.filter(r => r.player && r.pts !== '')
     if (filled.length !== 7) { setErr('Fill all 7 players'); return }
+    if (filled.some(r => Number(r.pts) < 0)) { setErr('Fantasy points cannot be negative'); return }
+    setErr('')
+    const computed = computeRanksAndPoints(filled)
+    setPreview(computed)
+  }
 
-    const sorted = [...filled].sort((a, b) => Number(b.pts) - Number(a.pts))
+  async function confirmSave() {
+    if (!preview) return
+
+    // Build the rank map from preview (use the rank from preview)
     const rankMap: Record<string, number> = {}
-    sorted.forEach((r, i) => { rankMap[r.player] = i + 1 })
+    for (const r of preview) { rankMap[r.player] = r.rank }
 
     const record: Record<string, number | string> = {
       match_number: match.match,
       added_by: userId,
       created_at: new Date().toISOString(),
     }
-    for (const r of filled) {
+    for (const r of preview) {
       const p = r.player as PlayerName
-      record[PLAYER_COLUMNS[p]] = Number(r.pts)
-      record[PLAYER_RANK_COLUMNS[p]] = rankMap[r.player]
+      record[PLAYER_COLUMNS[p]] = r.fantasyPts
+      record[PLAYER_RANK_COLUMNS[p]] = r.rank
     }
 
     setSaving(true); setErr('')
@@ -178,6 +249,9 @@ function AddResultModal({ match, onClose, onSaved, userId }: {
 
   const [t1, t2] = parseTeams(match.teams)
 
+  const RANK_COLORS_MODAL = ['#f0b429', '#c0c8d8', '#cd7f32', '#9ba3b2', '#9ba3b2', '#f97316', '#f04040']
+  function rankClr(rank: number) { return RANK_COLORS_MODAL[rank - 1] ?? '#9ba3b2' }
+
   return (
     <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal">
@@ -198,35 +272,94 @@ function AddResultModal({ match, onClose, onSaved, userId }: {
           </div>
         </div>
 
-        <div style={{ padding: '20px 28px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: 8, marginBottom: 10 }}>
-            <span style={{ fontSize: '0.72rem', color: 'var(--text-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Player</span>
-            <span style={{ fontSize: '0.72rem', color: 'var(--text-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Fantasy Pts</span>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {rows.map((row, i) => (
-              <div key={i} className="add-result-row">
-                <select className="input" value={row.player} onChange={e => update(i, 'player', e.target.value)}>
-                  <option value="">Select player…</option>
-                  {available(i).map(p => <option key={p} value={p}>{p}</option>)}
-                </select>
-                <input type="number" className="input" placeholder="0" value={row.pts} onChange={e => update(i, 'pts', e.target.value)} step="0.1" />
+        {/* ── Preview/Confirmation step ── */}
+        {preview ? (
+          <>
+            <div style={{ padding: '20px 28px' }}>
+              <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <CheckCircle size={16} color="var(--green)" /> Confirm Results
               </div>
-            ))}
-          </div>
-          {err && (
-            <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 8, background: 'rgba(240,64,64,0.08)', border: '1px solid rgba(240,64,64,0.2)', color: 'var(--red)', fontSize: '0.85rem' }}>
-              {err}
+              <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr 80px 90px', gap: 6, marginBottom: 8, fontSize: '0.68rem', color: 'var(--text-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                <span>Rank</span><span>Player</span><span style={{ textAlign: 'right' }}>Fantasy</span><span style={{ textAlign: 'right' }}>League Pts</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {preview.map(r => (
+                  <div key={r.player} style={{
+                    display: 'grid', gridTemplateColumns: '40px 1fr 80px 90px', gap: 6, alignItems: 'center',
+                    padding: '10px 12px', borderRadius: 10,
+                    background: r.rank === 1 ? 'rgba(240,180,41,0.08)' : r.fantasyPts === 0 ? 'rgba(240,64,64,0.05)' : 'var(--bg-2)',
+                    border: `1px solid ${r.rank === 1 ? 'rgba(240,180,41,0.25)' : 'var(--border)'}`,
+                  }}>
+                    <span style={{ fontWeight: 800, fontFamily: 'Space Grotesk, sans-serif', color: rankClr(r.rank), fontSize: '1rem' }}>
+                      #{r.rank}
+                    </span>
+                    <span style={{ fontWeight: 600, fontSize: '0.9rem', color: r.fantasyPts === 0 ? 'var(--text-3)' : 'var(--text-1)' }}>
+                      {r.player}
+                    </span>
+                    <span style={{ textAlign: 'right', fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-2)' }}>
+                      {r.fantasyPts}
+                    </span>
+                    <span style={{
+                      textAlign: 'right', fontWeight: 800, fontSize: '1rem',
+                      fontFamily: 'Space Grotesk, sans-serif',
+                      color: r.leaguePts === 0 ? 'var(--text-3)' : r.rank === 1 ? 'var(--gold)' : 'var(--accent)',
+                    }}>
+                      {r.leaguePts === 0 ? '0' : `+${r.leaguePts}`}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              {preview.some((r, _, arr) => arr.filter(x => x.rank === r.rank).length > 1) && (
+                <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 8, background: 'rgba(59,107,255,0.06)', border: '1px solid rgba(59,107,255,0.15)', fontSize: '0.78rem', color: 'var(--accent)' }}>
+                  ⚡ Tied players share averaged league points for their ranks
+                </div>
+              )}
+              {err && (
+                <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 8, background: 'rgba(240,64,64,0.08)', border: '1px solid rgba(240,64,64,0.2)', color: 'var(--red)', fontSize: '0.85rem' }}>
+                  {err}
+                </div>
+              )}
             </div>
-          )}
-        </div>
-
-        <div style={{ padding: '16px 28px 24px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" onClick={save} disabled={saving}>
-            {saving ? 'Saving…' : 'Save Result'}
-          </button>
-        </div>
+            <div style={{ padding: '16px 28px 24px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn btn-ghost" onClick={() => setPreview(null)}>← Edit</button>
+              <button className="btn btn-primary" onClick={confirmSave} disabled={saving}>
+                {saving ? 'Saving…' : '✓ Confirm & Save'}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* ── Input step ── */}
+            <div style={{ padding: '20px 28px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: 8, marginBottom: 10 }}>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Player</span>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Fantasy Pts</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {rows.map((row, i) => (
+                  <div key={i} className="add-result-row">
+                    <select className="input" value={row.player} onChange={e => update(i, 'player', e.target.value)}>
+                      <option value="">Select player…</option>
+                      {available(i).map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                    <input type="number" className="input" placeholder="0" value={row.pts} onChange={e => update(i, 'pts', e.target.value)} step="0.1" min="0" />
+                  </div>
+                ))}
+              </div>
+              {err && (
+                <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 8, background: 'rgba(240,64,64,0.08)', border: '1px solid rgba(240,64,64,0.2)', color: 'var(--red)', fontSize: '0.85rem' }}>
+                  {err}
+                </div>
+              )}
+            </div>
+            <div style={{ padding: '16px 28px 24px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+              <button className="btn btn-primary" onClick={handlePreview}>
+                Preview Result →
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )

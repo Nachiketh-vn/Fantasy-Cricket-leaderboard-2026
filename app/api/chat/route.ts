@@ -26,6 +26,12 @@ ${leaderboardContext || 'No data yet.'}
 ### Scoring System:
 Rank 1 = 10 pts, Rank 2 = 8 pts, Rank 3 = 6 pts, Rank 4 = 5 pts, Rank 5 = 4 pts, Rank 6 = 3 pts, Rank 7 = 2 pts
 
+**IMPORTANT SCORING RULES:**
+- **Tied players:** If two or more players have the SAME fantasy points, they share the AVERAGE of the league points for the ranks they would have occupied. Example: if 1st and 2nd are tied, each gets (10+8)/2 = 9 pts. If 4th, 5th, 6th are tied, each gets (5+4+3)/3 = 4 pts.
+- **Zero fantasy points:** A player with 0 fantasy points gets 0 league points regardless of rank. No participation reward.
+- **Negative fantasy points are not allowed.**
+- Always use these rules when calculating or discussing league points.
+
 ### All Match Results (each line = Match N (teams, date): player: Xpts(#rank), ...):
 ${matchResultsContext || 'No matches played yet.'}
 
