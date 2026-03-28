@@ -279,13 +279,12 @@ function AddResultModal({ match, onClose, onSaved, userId }: {
               <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <CheckCircle size={16} color="var(--green)" /> Confirm Results
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr 80px 90px', gap: 6, marginBottom: 8, fontSize: '0.68rem', color: 'var(--text-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              <div className="preview-row" style={{ marginBottom: 8, fontSize: '0.68rem', color: 'var(--text-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 <span>Rank</span><span>Player</span><span style={{ textAlign: 'right' }}>Fantasy</span><span style={{ textAlign: 'right' }}>League Pts</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {preview.map(r => (
-                  <div key={r.player} style={{
-                    display: 'grid', gridTemplateColumns: '40px 1fr 80px 90px', gap: 6, alignItems: 'center',
+                  <div key={r.player} className="preview-row" style={{
                     padding: '10px 12px', borderRadius: 10,
                     background: r.rank === 1 ? 'rgba(240,180,41,0.08)' : r.fantasyPts === 0 ? 'rgba(240,64,64,0.05)' : 'var(--bg-2)',
                     border: `1px solid ${r.rank === 1 ? 'rgba(240,180,41,0.25)' : 'var(--border)'}`,

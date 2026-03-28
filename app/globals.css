@@ -251,6 +251,9 @@
   .winner-grid {
     display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
   }
+  .preview-row {
+    display: grid; grid-template-columns: 36px 1fr 70px 80px; gap: 6px; align-items: center;
+  }
 }
 
 /* Animations */
@@ -305,6 +308,8 @@
   .stat-card-text div:first-child { font-size: 1.2rem !important; }
   
   .winner-grid { grid-template-columns: 1fr; }
+  .preview-row { grid-template-columns: 28px 1fr 50px 56px; gap: 4px; font-size: 0.78rem; }
+  .preview-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .add-result-row { grid-template-columns: 1fr 80px; }
   main { padding: 20px 14px 80px !important; }
   .card, .card-flat { padding: 14px 16px !important; }
