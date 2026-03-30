@@ -15,16 +15,16 @@ export interface TeamInfo {
 }
 
 export const IPL_TEAMS: Record<string, TeamInfo> = {
-  RCB:  { name: 'Royal Challengers Bengaluru', short: 'RCB',  color: '#c8102e', bg: 'rgba(200,16,46,0.12)', logo: 'https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/RCB/Logos/Roundbig/RCBroundbig.png' },
-  MI:   { name: 'Mumbai Indians',              short: 'MI',   color: '#004ba0', bg: 'rgba(0,75,160,0.12)',  logo: 'https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/MI/Logos/Roundbig/MIroundbig.png' },
-  CSK:  { name: 'Chennai Super Kings',         short: 'CSK',  color: '#f9cd05', bg: 'rgba(249,205,5,0.12)',  logo: 'https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/CSK/Logos/Roundbig/CSKroundbig.png' },
-  KKR:  { name: 'Kolkata Knight Riders',       short: 'KKR',  color: '#3a225d', bg: 'rgba(58,34,93,0.15)',   logo: 'https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/KKR/Logos/Roundbig/KKRroundbig.png' },
-  SRH:  { name: 'Sunrisers Hyderabad',         short: 'SRH',  color: '#f7a721', bg: 'rgba(247,167,33,0.12)', logo: 'https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/SRH/Logos/Roundbig/SRHroundbig.png' },
-  RR:   { name: 'Rajasthan Royals',            short: 'RR',   color: '#e73895', bg: 'rgba(231,56,149,0.12)', logo: 'https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/RR/Logos/Roundbig/RRroundbig.png' },
-  DC:   { name: 'Delhi Capitals',              short: 'DC',   color: '#004c93', bg: 'rgba(0,76,147,0.12)',   logo: 'https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/DC/Logos/Roundbig/DCroundbig.png' },
-  GT:   { name: 'Gujarat Titans',              short: 'GT',   color: '#1c1c2b', bg: 'rgba(28,28,43,0.2)',    logo: 'https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/GT/Logos/Roundbig/GTroundbig.png' },
-  PBKS: { name: 'Punjab Kings',                short: 'PBKS', color: '#ed1b24', bg: 'rgba(237,27,36,0.12)',  logo: 'https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/PBKS/Logos/Roundbig/PBKSroundbig.png' },
-  LSG:  { name: 'Lucknow Super Giants',        short: 'LSG',  color: '#003f7f', bg: 'rgba(0,63,127,0.12)',   logo: 'https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/LSG/Logos/Roundbig/LSGroundbig.png' },
+  RCB: { name: 'Royal Challengers Bengaluru', short: 'RCB', color: '#c8102e', bg: 'rgba(200,16,46,0.12)', logo: 'https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/RCB/Logos/Roundbig/RCBroundbig.png' },
+  MI: { name: 'Mumbai Indians', short: 'MI', color: '#004ba0', bg: 'rgba(0,75,160,0.12)', logo: 'https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/MI/Logos/Roundbig/MIroundbig.png' },
+  CSK: { name: 'Chennai Super Kings', short: 'CSK', color: '#f9cd05', bg: 'rgba(249,205,5,0.12)', logo: 'https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/CSK/Logos/Roundbig/CSKroundbig.png' },
+  KKR: { name: 'Kolkata Knight Riders', short: 'KKR', color: '#3a225d', bg: 'rgba(58,34,93,0.15)', logo: 'https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/KKR/Logos/Roundbig/KKRroundbig.png' },
+  SRH: { name: 'Sunrisers Hyderabad', short: 'SRH', color: '#f7a721', bg: 'rgba(247,167,33,0.12)', logo: 'https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/SRH/Logos/Roundbig/SRHroundbig.png' },
+  RR: { name: 'Rajasthan Royals', short: 'RR', color: '#e73895', bg: 'rgba(231,56,149,0.12)', logo: 'https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/RR/Logos/Roundbig/RRroundbig.png' },
+  DC: { name: 'Delhi Capitals', short: 'DC', color: '#004c93', bg: 'rgba(0,76,147,0.12)', logo: 'https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/DC/Logos/Roundbig/DCroundbig.png' },
+  GT: { name: 'Gujarat Titans', short: 'GT', color: '#1c1c2b', bg: 'rgba(28,28,43,0.2)', logo: 'https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/GT/Logos/Roundbig/GTroundbig.png' },
+  PBKS: { name: 'Punjab Kings', short: 'PBKS', color: '#ed1b24', bg: 'rgba(237,27,36,0.12)', logo: 'https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/PBKS/Logos/Roundbig/PBKSroundbig.png' },
+  LSG: { name: 'Lucknow Super Giants', short: 'LSG', color: '#003f7f', bg: 'rgba(0,63,127,0.12)', logo: 'https://bcciplayerimages.s3.ap-south-1.amazonaws.com/ipl/LSG/Logos/Roundbig/LSGroundbig.png' },
 };
 
 // Parse team codes from "RCB vs SRH" style strings
@@ -169,25 +169,15 @@ export const PLAYOFFS: Playoff[] = [
 
 // Humiliation messages for last place
 export const HUMILIATION_MESSAGES = [
-  "The absolute worst. Your team is a disaster zone.",
-  "Certified bottom-feeder. Congrats on being consistently terrible.",
-  "You're the reason last place exists. Embarrassing.",
-  "Even AI can't save your picks. Legend of the bottom.",
-  "RIP to your dignity. This is the funeral of your strategy.",
+  "Certified bottom-feeder. Congrats on being consistently terrible. You're the reason last place exists.",
 ];
 
 // Royal messages for 1st place
 export const ROYAL_MESSAGES = [
-  "BOW DOWN. The undisputed king of fantasy cricket.",
-  "Blessed by the cricket gods. Untouchable.",
-  "When this person picks, everyone else cries.",
-  "Fantasy royalty. The rest are just subjects.",
-  "Carrying the squad on a golden throne.",
+  "BOW DOWN. The undisputed king of fantasy cricket. Cricketing genius.",
 ];
 
 // Roast messages for 2nd-to-last
 export const SECOND_LAST_MESSAGES = [
-  "Almost as bad as last. At least you beat ONE person.",
   "The participation trophy is calling your name.",
-  "Consistently inconsistently bad. Impressive.",
 ];
