@@ -169,12 +169,12 @@ export const PLAYOFFS: Playoff[] = [
 
 // Humiliation messages for last place
 export const HUMILIATION_MESSAGES = [
-  "Certified bottom-feeder. Congrats on being consistently terrible. You're the reason last place exists.",
+  "Congrats on being consistently terrible. You're the reason last place exists.",
 ];
 
 // Royal messages for 1st place
 export const ROYAL_MESSAGES = [
-  "BOW DOWN. The undisputed king of fantasy cricket. Cricketing genius.",
+  "BOW DOWN. The undisputed king of cricket. Cricketing genius.",
 ];
 
 // Roast messages for 2nd-to-last
