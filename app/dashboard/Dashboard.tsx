@@ -12,20 +12,22 @@ import {
   Area, AreaChart, CartesianGrid, Cell,
 } from 'recharts'
 import {
-  LEAGUE_SCHEDULE, PLAYERS, RANK_POINTS, PLAYER_COLUMNS, PLAYER_RANK_COLUMNS,
+  LEAGUE_SCHEDULE, PLAYOFFS, PLAYERS, RANK_POINTS, PLAYER_COLUMNS, PLAYER_RANK_COLUMNS,
   TOURNAMENT_NAME, ROYAL_MESSAGES, HUMILIATION_MESSAGES, SECOND_LAST_MESSAGES,
   IPL_TEAMS, parseTeams,
-  type PlayerName, type Match,
+  type PlayerName, type Match, type Playoff,
 } from '@/lib/matchData'
 import { createClient } from '@/lib/supabase/client'
 import { logout } from '@/app/login/actions'
 import Link from 'next/link'
 
 type ResultsMap = Record<number, Record<string, number | string>>
+type PlayoffResultsMap = Record<string, Record<string, number | string>>
 
 interface Props {
   user: User
   initialResults: ResultsMap
+  initialPlayoffResults?: PlayoffResultsMap
   username: string | null
 }
 
@@ -560,13 +562,334 @@ function MatchCard({ match, isToday, isFuture, isDone, mResult, onAddResult, add
   )
 }
 
+/* ── Add Playoff Result Modal ───────────────────────────── */
+function AddPlayoffResultModal({ playoff, teamPair, onClose, onSaved, username }: {
+  playoff: Playoff
+  teamPair: [string, string] | null
+  onClose: () => void
+  onSaved: (map: PlayoffResultsMap) => void
+  username: string
+}) {
+  const [rows, setRows] = useState(Array(7).fill(null).map(() => ({ player: '' as PlayerName | '', pts: '' })))
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState('')
+  const [preview, setPreview] = useState<{ player: string; fantasyPts: number; rank: number; leaguePts: number }[] | null>(null)
+
+  const selected = rows.map(r => r.player).filter(Boolean)
+  const available = (i: number) => PLAYERS.filter(p => p === rows[i].player || !selected.includes(p))
+  function update(i: number, field: 'player' | 'pts', v: string) {
+    setRows(prev => { const n = [...prev]; n[i] = { ...n[i], [field]: v }; return n })
+  }
+
+  function handlePreview() {
+    const filled = rows.filter(r => r.player && r.pts !== '')
+    if (filled.length !== 7) { setErr('Fill all 7 players'); return }
+    if (filled.some(r => Number(r.pts) < 0)) { setErr('Fantasy points cannot be negative'); return }
+    setErr('')
+    setPreview(computeRanksAndPoints(filled))
+  }
+
+  async function confirmSave() {
+    if (!preview) return
+    const result: Record<string, number | string> = {
+      added_by: username,
+      created_at: new Date().toISOString(),
+    }
+    for (const r of preview) {
+      const p = r.player as PlayerName
+      result[PLAYER_COLUMNS[p]] = r.fantasyPts
+      result[PLAYER_RANK_COLUMNS[p]] = r.rank
+    }
+    // Map back to player-keyed for display
+    for (const r of preview) {
+      result[r.player + '_points'] = r.fantasyPts
+      result[r.player + '_rank'] = r.rank
+    }
+    setSaving(true); setErr('')
+    const res = await fetch('/api/playoff-results', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ playoffName: playoff.name, result }),
+    })
+    if (!res.ok) { setErr('Failed to save'); setSaving(false); return }
+    const newMap: PlayoffResultsMap = await res.json()
+    onSaved(newMap); onClose()
+  }
+
+  const RANK_COLORS_MODAL = ['#f0b429', '#c0c8d8', '#cd7f32', '#9ba3b2', '#9ba3b2', '#f97316', '#f04040']
+  function rankClr(rank: number) { return RANK_COLORS_MODAL[rank - 1] ?? '#9ba3b2' }
+
+  return (
+    <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div style={{ padding: '24px 28px 20px', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <div className="badge badge-blue" style={{ marginBottom: 8 }}>{playoff.name}</div>
+              {teamPair ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                  <TeamLogo code={teamPair[0]} size={32} />
+                  <span style={{ fontWeight: 800, fontSize: '1.15rem' }}>{teamPair[0]}</span>
+                  <span style={{ color: 'var(--text-3)', fontSize: '0.82rem' }}>vs</span>
+                  <span style={{ fontWeight: 800, fontSize: '1.15rem' }}>{teamPair[1]}</span>
+                  <TeamLogo code={teamPair[1]} size={32} />
+                </div>
+              ) : (
+                <div style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: 4 }}>{playoff.name}</div>
+              )}
+              <p style={{ color: 'var(--text-3)', fontSize: '0.8rem', marginTop: 3 }}>
+                {playoff.venue} · {new Date(playoff.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' })} · {playoff.time}
+              </p>
+            </div>
+            <button className="btn btn-ghost" onClick={onClose} style={{ padding: 8, borderRadius: 8 }}><X size={16} /></button>
+          </div>
+        </div>
+
+        {preview ? (
+          <>
+            <div style={{ padding: '20px 28px' }}>
+              <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <CheckCircle size={16} color="var(--green)" /> Confirm Results
+              </div>
+              <div className="preview-row" style={{ marginBottom: 8, fontSize: '0.68rem', color: 'var(--text-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                <span>Rank</span><span>Player</span><span style={{ textAlign: 'right' }}>Fantasy</span><span style={{ textAlign: 'right' }}>League Pts</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {preview.map(r => (
+                  <div key={r.player} className="preview-row" style={{
+                    padding: '10px 12px', borderRadius: 10,
+                    background: r.rank === 1 ? 'rgba(240,180,41,0.08)' : r.fantasyPts === 0 ? 'rgba(240,64,64,0.05)' : 'var(--bg-2)',
+                    border: `1px solid ${r.rank === 1 ? 'rgba(240,180,41,0.25)' : 'var(--border)'}`,
+                  }}>
+                    <span style={{ fontWeight: 800, fontFamily: 'Space Grotesk, sans-serif', color: rankClr(r.rank), fontSize: '1rem' }}>#{r.rank}</span>
+                    <span style={{ fontWeight: 600, fontSize: '0.9rem', color: r.fantasyPts === 0 ? 'var(--text-3)' : 'var(--text-1)' }}>{r.player}</span>
+                    <span style={{ textAlign: 'right', fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-2)' }}>{r.fantasyPts}</span>
+                    <span style={{ textAlign: 'right', fontWeight: 800, fontSize: '1rem', fontFamily: 'Space Grotesk, sans-serif', color: r.leaguePts === 0 ? 'var(--text-3)' : r.rank === 1 ? 'var(--gold)' : 'var(--accent)' }}>
+                      {r.leaguePts === 0 ? '0' : `+${r.leaguePts}`}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              {err && <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 8, background: 'rgba(240,64,64,0.08)', border: '1px solid rgba(240,64,64,0.2)', color: 'var(--red)', fontSize: '0.85rem' }}>{err}</div>}
+            </div>
+            <div style={{ padding: '16px 28px 24px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn btn-ghost" onClick={() => setPreview(null)}>← Edit</button>
+              <button className="btn btn-primary" onClick={confirmSave} disabled={saving}>{saving ? 'Saving…' : '✓ Confirm & Save'}</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ padding: '20px 28px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: 8, marginBottom: 10 }}>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Player</span>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Fantasy Pts</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {rows.map((row, i) => (
+                  <div key={i} className="add-result-row">
+                    <select className="input" value={row.player} onChange={e => update(i, 'player', e.target.value)}>
+                      <option value="">Select player…</option>
+                      {available(i).map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                    <input type="number" className="input" placeholder="0" value={row.pts} onChange={e => update(i, 'pts', e.target.value)} step="0.1" min="0" />
+                  </div>
+                ))}
+              </div>
+              {err && <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 8, background: 'rgba(240,64,64,0.08)', border: '1px solid rgba(240,64,64,0.2)', color: 'var(--red)', fontSize: '0.85rem' }}>{err}</div>}
+            </div>
+            <div style={{ padding: '16px 28px 24px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+              <button className="btn btn-primary" onClick={handlePreview}>Preview Result →</button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ── Playoff Card ───────────────────────────────────────── */
+const ALL_TEAM_CODES = Object.keys(IPL_TEAMS)
+
+function PlayoffCard({
+  playoff, selectedTeams, onChangeTeams, isDone, mResult, onAddResult
+}: {
+  playoff: Playoff
+  selectedTeams: [string, string] | null
+  onChangeTeams: (teams: [string, string]) => void
+  isDone: boolean
+  mResult: Record<string, number | string> | undefined
+  onAddResult: () => void
+}) {
+  const today = todayIST()
+  const isToday = playoff.date === today
+  const isFuture = playoff.date > today
+  const [showResult, setShowResult] = useState(false)
+
+  const fixedTeams = playoff.teams ? parseTeams(playoff.teams) : null
+
+  const dateLabel = new Date(playoff.date + 'T00:00:00').toLocaleDateString('en-IN', {
+    weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata'
+  })
+
+  const stageColor: Record<string, string> = {
+    'Qualifier 1': '#3b6bff', 'Eliminator': '#f97316',
+    'Qualifier 2': '#9b59b6', 'Final': '#f0b429',
+  }
+  const color = stageColor[playoff.name] ?? 'var(--accent)'
+
+  return (
+    <div style={{
+      borderRadius: 14, background: 'var(--bg-2)',
+      border: `1px solid ${isToday ? color : isDone ? 'rgba(100,200,100,0.25)' : 'var(--border)'}`,
+      padding: '18px 22px',
+      opacity: isFuture && !isToday ? 0.7 : 1,
+      boxShadow: isToday ? `0 0 18px color-mix(in srgb, ${color} 18%, transparent)` : 'none',
+      position: 'relative', overflow: 'hidden',
+    }}>
+      <div style={{
+        position: 'absolute', top: 0, left: 0, right: 0, height: 3,
+        background: `linear-gradient(90deg, ${color}, transparent)`,
+        borderRadius: '14px 14px 0 0',
+      }} />
+
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+            <span style={{
+              fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase',
+              letterSpacing: '0.07em', color,
+              background: `color-mix(in srgb, ${color} 12%, transparent)`,
+              border: `1px solid color-mix(in srgb, ${color} 30%, transparent)`,
+              padding: '2px 8px', borderRadius: 5,
+            }}>{playoff.name}</span>
+            {isToday && <span className="badge badge-blue" style={{ fontSize: '0.68rem' }}>TODAY</span>}
+            {isDone && <span className="badge" style={{ fontSize: '0.68rem', background: 'rgba(100,200,100,0.12)', color: 'var(--green)', border: '1px solid rgba(100,200,100,0.25)' }}>DONE</span>}
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-3)', marginLeft: 'auto' }}>
+              {dateLabel} · {playoff.time}
+            </span>
+          </div>
+
+          {fixedTeams ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+              <TeamLogo code={fixedTeams[0]} size={32} />
+              <span style={{ fontWeight: 800, fontSize: '1.1rem' }}>{fixedTeams[0]}</span>
+              <span style={{ color: 'var(--text-3)', fontSize: '0.8rem', fontWeight: 500 }}>vs</span>
+              <span style={{ fontWeight: 800, fontSize: '1.1rem' }}>{fixedTeams[1]}</span>
+              <TeamLogo code={fixedTeams[1]} size={32} />
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+              <select className="input" style={{ flex: '1 1 100px', maxWidth: 140, fontSize: '0.82rem', padding: '6px 10px' }}
+                value={selectedTeams?.[0] ?? ''} onChange={e => onChangeTeams([e.target.value, selectedTeams?.[1] ?? ''])}>
+                <option value="">Team 1…</option>
+                {ALL_TEAM_CODES.map(c => <option key={c} value={c}>{c} – {IPL_TEAMS[c].name}</option>)}
+              </select>
+              <span style={{ color: 'var(--text-3)', fontSize: '0.78rem', fontWeight: 600 }}>vs</span>
+              <select className="input" style={{ flex: '1 1 100px', maxWidth: 140, fontSize: '0.82rem', padding: '6px 10px' }}
+                value={selectedTeams?.[1] ?? ''} onChange={e => onChangeTeams([selectedTeams?.[0] ?? '', e.target.value])}>
+                <option value="">Team 2…</option>
+                {ALL_TEAM_CODES.map(c => <option key={c} value={c}>{c} – {IPL_TEAMS[c].name}</option>)}
+              </select>
+            </div>
+          )}
+
+          {playoff.matchDesc && (
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-3)', fontStyle: 'italic', marginTop: 2 }}>
+              {playoff.matchDesc}
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+          {isDone ? (
+            <button className="btn btn-ghost btn-sm" onClick={() => setShowResult(p => !p)}
+              style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <Eye size={13} color="var(--green)" /> {showResult ? 'Hide' : 'Show Result'}
+            </button>
+          ) : isFuture ? (
+            <div className="badge badge-muted" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <Lock size={10} /> Upcoming
+            </div>
+          ) : (
+            <button className={`btn btn-sm ${isToday ? 'btn-primary' : 'btn-ghost'}`}
+              style={{ display: 'flex', alignItems: 'center', gap: 6 }} onClick={onAddResult}>
+              <Plus size={13} /> Add Result
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div style={{ marginTop: 10, fontSize: '0.75rem', color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 5 }}>
+        <Calendar size={11} /> {playoff.venue}
+      </div>
+
+      {isDone && showResult && mResult && (
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {PLAYERS.map(p => {
+              const rank = Number(mResult[p + '_rank'] ?? 0)
+              const pts = Number(mResult[p + '_points'] ?? 0)
+              return (
+                <div key={p} style={{
+                  display: 'flex', alignItems: 'center', gap: 5,
+                  padding: '3px 10px', borderRadius: 6,
+                  background: 'var(--bg-3)', border: '1px solid var(--border)', fontSize: '0.75rem'
+                }}>
+                  <span style={{ color: rankColor(rank), fontWeight: 700 }}>#{rank}</span>
+                  <span style={{ color: 'var(--text-2)' }}>{p.slice(0, 6)}</span>
+                  <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{pts}</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 /* ── Main Dashboard ─────────────────────────────────────── */
-export default function Dashboard({ user, initialResults, username }: Props) {
+
+export default function Dashboard({ user, initialResults, initialPlayoffResults, username }: Props) {
   const [tab, setTab] = useState<'matches' | 'leaderboard'>('matches')
   const [results, setResults] = useState<ResultsMap>(initialResults)
   const [addMatch, setAddMatch] = useState<Match | null>(null)
   const [chatOpen, setChatOpen] = useState(false)
   const [addedByNames, setAddedByNames] = useState<Record<string, string>>({})
+
+  // Playoff results — stored in lib/playoffResults.json via API
+  const [playoffResults, setPlayoffResults] = useState<PlayoffResultsMap>(initialPlayoffResults ?? {})
+  const [addPlayoff, setAddPlayoff] = useState<Playoff | null>(null)
+
+  // Fetch playoff results from file-based store
+  useEffect(() => {
+    fetch('/api/playoff-results')
+      .then(r => r.json())
+      .then(setPlayoffResults)
+      .catch(() => {})
+  }, [])
+
+  // Playoff TBD team selections — persisted to localStorage
+  const PLAYOFF_LS_KEY = 'playoff_team_selections'
+  const [playoffSelections, setPlayoffSelections] = useState<Record<string, [string, string]>>(() => {
+    if (typeof window === 'undefined') return {}
+    try { return JSON.parse(localStorage.getItem(PLAYOFF_LS_KEY) ?? '{}') } catch { return {} }
+  })
+
+  function updatePlayoffTeams(playoffName: string, teams: [string, string]) {
+    setPlayoffSelections(prev => {
+      const next = { ...prev, [playoffName]: teams }
+      try { localStorage.setItem(PLAYOFF_LS_KEY, JSON.stringify(next)) } catch { /* ignore */ }
+      return next
+    })
+  }
+
+  function getPlayoffTeamPair(playoff: Playoff): [string, string] | null {
+    if (playoff.teams) return parseTeams(playoff.teams)
+    const sel = playoffSelections[playoff.name]
+    return sel ?? null
+  }
 
   const displayName = username || user.email?.split('@')[0] || 'Player'
   const today = todayIST()
@@ -678,6 +1001,26 @@ export default function Dashboard({ user, initialResults, username }: Props) {
         {/* ══ MATCHES TAB ════════════════════════════════════ */}
         {tab === 'matches' && (
           <div className="animate-fade-up">
+            {/* ── Playoffs (always at top) ── */}
+            <div style={{ marginBottom: 28 }}>
+              <h2 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: '1.1rem' }}>🏆</span> Playoffs
+              </h2>
+              <div className="scroll-list">
+                {PLAYOFFS.map(playoff => (
+                  <PlayoffCard
+                    key={playoff.name}
+                    playoff={playoff}
+                    selectedTeams={playoffSelections[playoff.name] ?? null}
+                    onChangeTeams={teams => updatePlayoffTeams(playoff.name, teams)}
+                    isDone={!!playoffResults[playoff.name]}
+                    mResult={playoffResults[playoff.name]}
+                    onAddResult={() => setAddPlayoff(playoff)}
+                  />
+                ))}
+              </div>
+            </div>
+
             {/* Today's Matches */}
             {todayMatches.length > 0 && (
               <div style={{ marginBottom: 28 }}>
@@ -893,6 +1236,15 @@ export default function Dashboard({ user, initialResults, username }: Props) {
       )}
 
       {addMatch && <AddResultModal match={addMatch} onClose={() => setAddMatch(null)} onSaved={setResults} userId={user.id} />}
+      {addPlayoff && (
+        <AddPlayoffResultModal
+          playoff={addPlayoff}
+          teamPair={getPlayoffTeamPair(addPlayoff)}
+          onClose={() => setAddPlayoff(null)}
+          onSaved={setPlayoffResults}
+          username={displayName}
+        />
+      )}
     </div>
   )
 }

@@ -16,15 +16,13 @@ export default async function DashboardPage() {
     .eq('id', user.id)
     .single()
 
-  // Fetch all results (include added_by and created_at)
+  // Fetch all league results
   const { data: rows, error } = await supabase
     .from('match_results')
     .select('*')
     .order('match_number', { ascending: true })
 
-  if (error) {
-    console.error('Error fetching results:', error)
-  }
+  if (error) console.error('Error fetching results:', error)
 
   const resultsMap: Record<number, Record<string, number | string>> = {}
   for (const row of rows ?? []) {
@@ -40,3 +38,4 @@ export default async function DashboardPage() {
 
   return <Dashboard user={user} initialResults={resultsMap} username={profile?.username ?? null} />
 }
+

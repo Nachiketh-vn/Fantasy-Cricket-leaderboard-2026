@@ -158,13 +158,40 @@ export interface Playoff {
   name: string;
   date: string;
   venue: string;
+  time: string;
+  teams?: string; // e.g. "RCB vs GT" — omit when TBD
+  matchDesc?: string; // e.g. "Loser of Q1 vs Winner of Eliminator"
 }
 
 export const PLAYOFFS: Playoff[] = [
-  { name: "Qualifier 1", date: "2026-05-26", venue: "Bengaluru" },
-  { name: "Eliminator", date: "2026-05-27", venue: "TBD" },
-  { name: "Qualifier 2", date: "2026-05-29", venue: "TBD" },
-  { name: "FINAL", date: "2026-05-31", venue: "M.Chinnaswamy Stadium, Bengaluru" },
+  {
+    name: "Qualifier 1",
+    date: "2026-05-26",
+    venue: "HPCA Stadium, Dharamshala",
+    time: "7:30 PM IST",
+    teams: "RCB vs GT",
+  },
+  {
+    name: "Eliminator",
+    date: "2026-05-27",
+    venue: "New International Cricket Stadium, New Chandigarh",
+    time: "7:30 PM IST",
+    teams: "SRH vs RR",
+  },
+  {
+    name: "Qualifier 2",
+    date: "2026-05-29",
+    venue: "New Chandigarh",
+    time: "7:30 PM IST",
+    matchDesc: "Loser of Q1 vs Winner of Eliminator",
+  },
+  {
+    name: "Final",
+    date: "2026-05-31",
+    venue: "Narendra Modi Stadium, Ahmedabad",
+    time: "7:30 PM IST",
+    matchDesc: "Winner of Q1 vs Winner of Q2",
+  },
 ];
 
 // Humiliation messages for last place
