@@ -960,9 +960,9 @@ export default function Dashboard({ user, initialResults, username }: Props) {
         {/* STATS */}
         <div className="dashboard-stats stagger">
           {[
-            { label: 'Total Matches', val: '70', icon: <Calendar size={16} />, color: 'var(--accent)' },
+            { label: 'Total Matches', val: String(TOTAL_LEAGUE_MATCHES), icon: <Calendar size={16} />, color: 'var(--accent)' },
             { label: 'Completed', val: String(done.size), icon: <CheckCircle size={16} />, color: 'var(--green)' },
-            { label: 'Remaining', val: String(70 - done.size), icon: <BarChart2 size={16} />, color: 'var(--gold)' },
+            { label: 'Remaining', val: String(TOTAL_LEAGUE_MATCHES - done.size), icon: <BarChart2 size={16} />, color: 'var(--gold)' },
           ].map(s => (
             <div key={s.label} className="card stat-card" style={{ padding: '18px 20px' }}>
               <div className="stat-card-icon" style={{
