@@ -22,12 +22,10 @@ import { logout } from '@/app/login/actions'
 import Link from 'next/link'
 
 type ResultsMap = Record<number, Record<string, number | string>>
-type PlayoffResultsMap = Record<string, Record<string, number | string>>
 
 interface Props {
   user: User
   initialResults: ResultsMap
-  initialPlayoffResults?: PlayoffResultsMap
   username: string | null
 }
 
@@ -563,12 +561,12 @@ function MatchCard({ match, isToday, isFuture, isDone, mResult, onAddResult, add
 }
 
 /* ── Add Playoff Result Modal ───────────────────────────── */
-function AddPlayoffResultModal({ playoff, teamPair, onClose, onSaved, username }: {
+function AddPlayoffResultModal({ playoff, teamPair, onClose, onSaved, userId }: {
   playoff: Playoff
   teamPair: [string, string] | null
   onClose: () => void
-  onSaved: (map: PlayoffResultsMap) => void
-  username: string
+  onSaved: (map: ResultsMap) => void
+  userId: string
 }) {
   const [rows, setRows] = useState(Array(7).fill(null).map(() => ({ player: '' as PlayerName | '', pts: '' })))
   const [saving, setSaving] = useState(false)
@@ -591,28 +589,34 @@ function AddPlayoffResultModal({ playoff, teamPair, onClose, onSaved, username }
 
   async function confirmSave() {
     if (!preview) return
-    const result: Record<string, number | string> = {
-      added_by: username,
+    setSaving(true); setErr('')
+    const record: Record<string, number | string> = {
+      match_number: playoff.match,
+      added_by: userId,
       created_at: new Date().toISOString(),
     }
     for (const r of preview) {
       const p = r.player as PlayerName
-      result[PLAYER_COLUMNS[p]] = r.fantasyPts
-      result[PLAYER_RANK_COLUMNS[p]] = r.rank
+      record[PLAYER_COLUMNS[p]] = r.fantasyPts
+      record[PLAYER_RANK_COLUMNS[p]] = r.rank
     }
-    // Map back to player-keyed for display
-    for (const r of preview) {
-      result[r.player + '_points'] = r.fantasyPts
-      result[r.player + '_rank'] = r.rank
+    const sb = createClient()
+    const { error } = await sb.from('match_results').upsert(record, { onConflict: 'match_number' })
+    if (error) { setErr(error.message); setSaving(false); return }
+
+    // Refresh full results map
+    const { data } = await sb.from('match_results').select('*').order('match_number')
+    const newMap: ResultsMap = {}
+    for (const row of data ?? []) {
+      const d: Record<string, number | string> = {}
+      for (const p of PLAYERS) {
+        d[p + '_points'] = row[PLAYER_COLUMNS[p]] ?? 0
+        d[p + '_rank'] = row[PLAYER_RANK_COLUMNS[p]] ?? 0
+      }
+      d['added_by'] = row.added_by ?? ''
+      d['created_at'] = row.created_at ?? ''
+      newMap[row.match_number] = d
     }
-    setSaving(true); setErr('')
-    const res = await fetch('/api/playoff-results', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ playoffName: playoff.name, result }),
-    })
-    if (!res.ok) { setErr('Failed to save'); setSaving(false); return }
-    const newMap: PlayoffResultsMap = await res.json()
     onSaved(newMap); onClose()
   }
 
@@ -851,24 +855,13 @@ function PlayoffCard({
 
 /* ── Main Dashboard ─────────────────────────────────────── */
 
-export default function Dashboard({ user, initialResults, initialPlayoffResults, username }: Props) {
+export default function Dashboard({ user, initialResults, username }: Props) {
   const [tab, setTab] = useState<'matches' | 'leaderboard'>('matches')
   const [results, setResults] = useState<ResultsMap>(initialResults)
   const [addMatch, setAddMatch] = useState<Match | null>(null)
   const [chatOpen, setChatOpen] = useState(false)
   const [addedByNames, setAddedByNames] = useState<Record<string, string>>({})
-
-  // Playoff results — stored in lib/playoffResults.json via API
-  const [playoffResults, setPlayoffResults] = useState<PlayoffResultsMap>(initialPlayoffResults ?? {})
   const [addPlayoff, setAddPlayoff] = useState<Playoff | null>(null)
-
-  // Fetch playoff results from file-based store
-  useEffect(() => {
-    fetch('/api/playoff-results')
-      .then(r => r.json())
-      .then(setPlayoffResults)
-      .catch(() => {})
-  }, [])
 
   // Playoff TBD team selections — persisted to localStorage
   const PLAYOFF_LS_KEY = 'playoff_team_selections'
@@ -890,6 +883,7 @@ export default function Dashboard({ user, initialResults, initialPlayoffResults,
     const sel = playoffSelections[playoff.name]
     return sel ?? null
   }
+
 
   const displayName = username || user.email?.split('@')[0] || 'Player'
   const today = todayIST()
@@ -1013,8 +1007,8 @@ export default function Dashboard({ user, initialResults, initialPlayoffResults,
                     playoff={playoff}
                     selectedTeams={playoffSelections[playoff.name] ?? null}
                     onChangeTeams={teams => updatePlayoffTeams(playoff.name, teams)}
-                    isDone={!!playoffResults[playoff.name]}
-                    mResult={playoffResults[playoff.name]}
+                    isDone={done.has(playoff.match)}
+                    mResult={results[playoff.match]}
                     onAddResult={() => setAddPlayoff(playoff)}
                   />
                 ))}
@@ -1241,8 +1235,8 @@ export default function Dashboard({ user, initialResults, initialPlayoffResults,
           playoff={addPlayoff}
           teamPair={getPlayoffTeamPair(addPlayoff)}
           onClose={() => setAddPlayoff(null)}
-          onSaved={setPlayoffResults}
-          username={displayName}
+          onSaved={setResults}
+          userId={user.id}
         />
       )}
     </div>

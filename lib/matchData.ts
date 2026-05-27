@@ -155,6 +155,7 @@ export const LEAGUE_SCHEDULE: Match[] = [
 ];
 
 export interface Playoff {
+  match: number; // 71–74, continues from league matches
   name: string;
   date: string;
   venue: string;
@@ -165,6 +166,7 @@ export interface Playoff {
 
 export const PLAYOFFS: Playoff[] = [
   {
+    match: 71,
     name: "Qualifier 1",
     date: "2026-05-26",
     venue: "HPCA Stadium, Dharamshala",
@@ -172,6 +174,7 @@ export const PLAYOFFS: Playoff[] = [
     teams: "RCB vs GT",
   },
   {
+    match: 72,
     name: "Eliminator",
     date: "2026-05-27",
     venue: "New International Cricket Stadium, New Chandigarh",
@@ -179,6 +182,7 @@ export const PLAYOFFS: Playoff[] = [
     teams: "SRH vs RR",
   },
   {
+    match: 73,
     name: "Qualifier 2",
     date: "2026-05-29",
     venue: "New Chandigarh",
@@ -186,6 +190,7 @@ export const PLAYOFFS: Playoff[] = [
     matchDesc: "Loser of Q1 vs Winner of Eliminator",
   },
   {
+    match: 74,
     name: "Final",
     date: "2026-05-31",
     venue: "Narendra Modi Stadium, Ahmedabad",
