@@ -3,7 +3,7 @@
 // ============================================================
 
 export const TOURNAMENT_NAME = "TATA IPL 2026";
-export const TOTAL_LEAGUE_MATCHES = 70;
+export const TOTAL_LEAGUE_MATCHES = 74;
 
 // IPL Team data
 export interface TeamInfo {
